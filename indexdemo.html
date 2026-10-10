@@ -1,0 +1,713 @@
+<title>Trợ lý ĐGNL Sư phạm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Layout: một cột chat toàn màn hình; phiếu dự thi 3 đợt nằm ngay trong lời chào đầu tiên. */
+:root {
+  --bg: #F1F3F8;
+  --surface: #FFFFFF;
+  --ink: #14223F;
+  --muted: #56637D;
+  --line: #D8DEEA;
+  --accent: #C3352B;
+  --accent-ink: #FFFFFF;
+  --user: #14223F;
+  --user-ink: #F4F6FB;
+  --note-bg: #FFF3D1;
+  --note-ink: #4A3A08;
+  --font-display: "Newsreader", "Georgia", "Times New Roman", serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1527;
+    --surface: #172039;
+    --ink: #E7ECF6;
+    --muted: #9BA8C4;
+    --line: #2A3558;
+    --accent: #FF7A6B;
+    --accent-ink: #1A0A08;
+    --user: #2C4075;
+    --user-ink: #F4F6FB;
+    --note-bg: #3A2F12;
+    --note-ink: #F5E3B0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1527;
+  --surface: #172039;
+  --ink: #E7ECF6;
+  --muted: #9BA8C4;
+  --line: #2A3558;
+  --accent: #FF7A6B;
+  --accent-ink: #1A0A08;
+  --user: #2C4075;
+  --user-ink: #F4F6FB;
+  --note-bg: #3A2F12;
+  --note-ink: #F5E3B0;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.app {
+  height: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+header { padding-block: 16px 10px; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.65rem;
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+.sub { margin: 4px 0 0; color: var(--muted); font-size: 0.86rem; }
+details.notice {
+  margin-top: 10px;
+  background: var(--note-bg);
+  color: var(--note-ink);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+}
+details.notice summary { cursor: pointer; font-weight: 500; }
+details.notice summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.notice ul { margin: 8px 0 2px; padding-left: 18px; }
+details.notice a { color: inherit; text-decoration: underline; }
+details.notice p { margin: 8px 0 0; }
+
+#log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-block: 10px;
+  scroll-behavior: smooth;
+}
+.row { display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.row.user { align-items: flex-end; }
+.bubble {
+  min-width: 0;
+  max-width: min(100%, 600px);
+  padding: 10px 14px;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+.bot .bubble {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top-left-radius: 4px;
+}
+.user .bubble {
+  background: var(--user);
+  color: var(--user-ink);
+  border-bottom-right-radius: 4px;
+}
+.bubble p { margin: 0; }
+.bubble p + p, .bubble p + ul, .bubble ul + p { margin-top: 8px; }
+.bubble ul { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.bubble strong { font-weight: 600; }
+.bubble .note {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.tag { font-size: 0.72rem; color: var(--muted); padding-left: 4px; }
+.dots { display: inline-flex; gap: 4px; padding-block: 6px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .dots i { animation: blink 1.1s infinite ease-in-out; }
+  .dots i:nth-child(2) { animation-delay: 0.15s; }
+  .dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+}
+
+.tickets { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 10px; }
+.ticket {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  min-width: 0;
+}
+.ticket .stub {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-right: 2px dashed var(--line);
+  padding: 8px 0;
+  color: var(--accent);
+}
+.ticket .stub small { font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ticket .stub b { font-family: var(--font-display); font-size: 1.7rem; line-height: 1; }
+.ticket .body { padding: 8px 10px; min-width: 0; font-size: 0.82rem; }
+.ticket dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; }
+.ticket dt { color: var(--muted); }
+.ticket dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+.ticket .where { margin: 6px 0 0; color: var(--muted); font-size: 0.76rem; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-left: 4px; }
+.fb .fbq { font-size: 0.84rem; color: var(--muted); }
+.links { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.links a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.chip {
+  font: inherit; font-size: 0.84rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip[disabled] { opacity: 0.5; cursor: default; }
+
+form {
+  display: flex; gap: 8px;
+  padding-block: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+input[type="text"] {
+  flex: 1; min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+input[type="text"]::placeholder { color: var(--muted); }
+.send {
+  font: inherit; font-weight: 600;
+  background: var(--accent); color: var(--accent-ink);
+  border: 0; border-radius: 10px;
+  padding: 0 18px;
+  cursor: pointer;
+}
+.send[disabled] { opacity: 0.5; cursor: default; }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Trợ lý ĐGNL Sư phạm</h1>
+    <p class="sub">Hỏi đáp về kỳ thi đánh giá năng lực chuyên biệt của ĐH Sư phạm TP.HCM</p>
+    <details class="notice">
+      <summary>Không chính thức · dữ liệu mùa tuyển sinh 2026</summary>
+      <p>Trợ lý này không thuộc ĐH Sư phạm TP.HCM. Khi các nguồn ghi khác nhau, trợ lý ưu tiên website của trường. Lịch, lệ phí và phương thức năm 2027 chưa thấy trường công bố, nên hãy đối chiếu với thông báo chính thức trước khi đăng ký.</p>
+      <ul>
+        <li><a href="https://dgnl.hcmue.edu.vn" target="_blank" rel="noopener">Website kỳ thi ĐGNL chuyên biệt của trường (kế hoạch 2026, hỏi đáp)</a></li>
+        <li><a href="https://tuyensinh.hcmue.edu.vn/index.php?id=27803&lang=vi&option=com_content&site=183&view=article" target="_blank" rel="noopener">Thông tin tuyển sinh đại học 2026 (website tuyển sinh của trường)</a></li>
+        <li><a href="https://drive.google.com/file/d/1JWc0ctdH1HUthfrurouF9Wne8rGu9kLu/view" target="_blank" rel="noopener">Bảng chỉ tiêu và tổ hợp xét tuyển 2026, cơ sở chính (trường công bố)</a></li>
+        <li><a href="https://tuoitre.vn/3-dot-thi-danh-gia-nang-luc-chuyen-biet-2026-cua-truong-su-pham-20251216143030965.htm" target="_blank" rel="noopener">Tuổi Trẻ: 3 đợt thi đánh giá năng lực chuyên biệt 2026</a></li>
+        <li><a href="https://vnexpress.net/lich-thi-danh-gia-nang-luc-cua-dai-hoc-su-pham-tp-hcm-nam-2026-4994489.html" target="_blank" rel="noopener">VnExpress: Lịch thi đánh giá năng lực 2026</a></li>
+        <li><a href="https://huongnghiep.hocmai.vn/ky-thi-danh-gia-nang-luc-chuyen-biet-h-sca-2026-huong-dan-chi-tiet-tu-a-z" target="_blank" rel="noopener">Hocmai: Hướng dẫn chi tiết kỳ thi H-SCA</a></li>
+      </ul>
+    </details>
+  </header>
+
+  <main id="log" aria-live="polite"></main>
+
+  <form id="form" autocomplete="off">
+    <input type="text" id="q" placeholder="Nhập câu hỏi, ví dụ: lệ phí thi Toán và Lý?" aria-label="Câu hỏi của bạn">
+    <button class="send" id="send" type="submit">Gửi</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Dữ liệu tư vấn (mùa 2026) ----------
+  var KB = [
+    { id: "tongquan", label: "Kỳ thi này là gì?",
+      keys: ["la gi", "gioi thieu", "tong quan", "hsca", "h-sca", "danh gia nang luc", "nhu the nao", "co nen thi", "chuyen biet"],
+      follow: ["lich", "cautruc", "xettuyen"],
+      text: "**Kỳ thi đánh giá năng lực chuyên biệt (H-SCA)** do ĐH Sư phạm TP.HCM tổ chức, thi hoàn toàn trên máy tính tại các điểm thi của trường. Đề bám chương trình phổ thông hiện hành: khoảng 70–80% kiến thức lớp 12, phần còn lại thuộc lớp 10 và 11.\n- Môn thi (thi độc lập): Toán, Vật lí, Hóa học, Sinh học, Ngữ văn, Tiếng Anh. Bạn được đăng ký một hoặc nhiều môn.\n- Mùa 2026 có 3 đợt, trường dự kiến khoảng 40.000 lượt thí sinh.\n- Kết quả dùng để xét tuyển vào các ngành áp dụng phương thức này theo đề án tuyển sinh của trường, và một số trường khác." },
+    { id: "lich", label: "Lịch thi các đợt",
+      keys: ["lich", "khi nao", "ngay thi", "dot", "thang", "bao gio", "han", "thoi gian", "deadline"],
+      follow: ["dangky", "ketqua", "diadiem"],
+      text: "Mùa 2026 có 3 đợt thi (theo website của trường):\n- **Đợt 1:** thi 26–29/3; đăng ký thi 25/2–12/3; công bố kết quả 15/4.\n- **Đợt 2:** thi 7–10/5; đăng ký thi 6–13/4; công bố kết quả 25/5.\n- **Đợt 3:** thi 29–31/5; đăng ký thi 20–29/4; công bố kết quả 15/6.\nThời gian đăng ký có thể kết thúc sớm khi đủ số lượng của mỗi đợt. Đây là lịch năm 2026, lịch năm 2027 mình chưa thấy trường công bố." },
+    { id: "dangky", label: "Đăng ký thế nào?",
+      keys: ["dang ky", "dang ki", "tai khoan", "nop", "thanh toan", "qr", "cach", "quy trinh", "buoc", "huy", "doi ca", "hoan phi", "hoan tien", "chuyen khoan", "cccd"],
+      follow: ["phi", "lich", "diadiem"],
+      text: "Đăng ký (2026) làm hoàn toàn trực tuyến:\n- **Bước 1:** tạo tài khoản (đợt 1: 12–25/1; đợt 2 và 3: 30/3–5/4).\n- **Bước 2:** đăng ký dự thi trên website đăng ký của trường, chọn môn, ca thi và địa điểm.\n- **Bước 3:** nộp lệ phí trực tuyến bằng mã QR qua ứng dụng ngân hàng hoặc ví điện tử. Nên quét mã thay vì nhập tay để nội dung chuyển khoản đúng.\nTrường gửi thông báo thông tin dự thi trước kỳ thi (trước 20/3 với đợt 1, trước 30/4 với đợt 2, trước 18/5 với đợt 3).\n- Hệ thống thường cập nhật thanh toán trong 24 giờ. Quá thời gian này thì gửi email hỗ trợ kèm họ tên, số CCCD, mã đăng ký và biên lai. Trong lúc chờ, đừng đăng ký hoặc thanh toán lại.\n- Số CCCD không tự sửa được trong tài khoản.\n- Theo quy định hiện hành, trường không giải quyết hủy thi hoặc đổi ca sau khi đã đăng ký. Chính sách hoàn phí nằm trong Điều khoản dịch vụ trên website đăng ký." },
+    { id: "phi", label: "Lệ phí bao nhiêu?",
+      keys: ["le phi", "phi thi", "tien", "bao nhieu tien", "300", "700", "400", "chi phi"],
+      follow: ["dangky", "cautruc"],
+      text: "Lệ phí 2026 tính theo từng môn, mỗi lượt thi:\n- Toán, Vật lí, Hóa học, Sinh học: **300.000đ/môn**\n- Ngữ văn: **400.000đ**\n- Tiếng Anh: **700.000đ**\nVí dụ thi Toán, Vật lí và Hóa học là 900.000đ. Lệ phí nộp trực tuyến bằng mã QR khi đăng ký dự thi." },
+    { id: "cautruc", label: "Cấu trúc đề thi",
+      keys: ["cau truc", "de thi", "bao nhieu cau", "mon thi", "mon", "90 phut", "dang bai", "trac nghiem", "tu luan", "minh hoa", "thang diem", "bao lau"],
+      follow: ["onthi", "phi", "xettuyen"],
+      text: "Trường áp dụng cấu trúc bài thi từ năm 2025 và đăng đề minh họa trên website kỳ thi. Nội dung lớp 12 chiếm khoảng 70–80%, phần còn lại thuộc lớp 10 và 11.\nTheo các bài báo (mình chưa đối chiếu được với trang cấu trúc chính thức):\n- **Toán, Lý, Hóa, Sinh** (90 phút, 40 câu): 25 câu trắc nghiệm, 5 câu phân tích dữ liệu tổng hợp, 10 câu điền đáp số.\n- **Ngữ văn** (90 phút): 20 câu trắc nghiệm đọc hiểu, 1 câu viết đoạn văn, 1 câu viết bài luận.\n- **Tiếng Anh**: đánh giá 4 kỹ năng Nghe, Nói, Đọc, Viết. Các bài báo ghi thời lượng khác nhau (90 hoặc 180 phút), nên bạn cần xem trang cấu trúc bài thi của trường.\nMình chưa tìm thấy thang điểm từng môn. Trường cũng có đăng danh mục máy tính bỏ túi được phép dùng trong kỳ thi." },
+    { id: "doituong", label: "Lớp 11 thi được không?",
+      keys: ["doi tuong", "lop 11", "lop 12", "ai duoc", "tu do", "bao luu", "bao nhieu nam", "hieu luc", "thi lai", "nhieu lan", "hoc sinh"],
+      follow: ["lich", "xettuyen"],
+      text: "Theo website của trường:\n- **Đối tượng dự thi 2026:** học sinh lớp 11, lớp 12 và cá nhân có nhu cầu tìm hiểu về kỳ thi.\n- **Lớp 11** có thể đăng ký thi để dùng kết quả cho năm sau. Kết quả được **bảo lưu 2 năm** để xét tuyển.\n- **Thi nhiều lần:** bạn được đăng ký một hoặc nhiều đợt, và nhiều môn trong cùng một đợt. Trường lấy **điểm cao nhất** trong các đợt để xét tuyển. Trong mỗi đợt, không đăng ký cùng một môn nhiều lần.\n- Thí sinh tự do: phần hỏi đáp của trường ghi các năm trước không áp dụng phương thức dùng điểm thi cho nhóm này. Bạn nên hỏi trường xem năm bạn thi có áp dụng không." },
+    { id: "diadiem", label: "Thi ở đâu?",
+      keys: ["dia diem", "o dau", "tai dau", "da nang", "dak lak", "daklak", "tay ninh", "long an", "tphcm", "tp.hcm", "ha noi", "noi thi", "cho thi", "tinh"],
+      follow: ["lich", "dangky"],
+      text: "Mùa 2026 có 5 điểm thi ở 4 địa phương:\n- **Điểm 1, TP.HCM:** ĐH Sư phạm TP.HCM, cơ sở chính (280 An Dương Vương)\n- **Điểm 2, TP.HCM:** ĐH Công Thương TP.HCM (140 Lê Trọng Tấn)\n- **Điểm 3, Đà Nẵng:** ĐH Sư phạm, ĐH Đà Nẵng (459 Tôn Đức Thắng)\n- **Điểm 4, Đắk Lắk:** ĐH Tây Nguyên (567 Lê Duẩn)\n- **Điểm 5, Tây Ninh:** phân hiệu Long An của ĐH Sư phạm TP.HCM (934 Quốc lộ 1A)\nĐợt 1 và 2 thi ở cả 5 điểm. Đợt 3 chỉ thi ở điểm 1, 2 và 5. Bạn tự chọn ca thi và điểm thi khi đăng ký." },
+    { id: "xettuyen", label: "Dùng để xét tuyển thế nào?",
+      keys: ["xet tuyen", "hoc ba", "he so", "truong khac", "truong nao", "cong thuc", "nang khieu", "dung de", "dai hoc", "ket hop", "phuong thuc", "thang diem"],
+      follow: ["nguong", "diemchuan", "tohop"],
+      text: "Theo website tuyển sinh của trường (mùa 2026), có phương thức **học bạ THPT kết hợp thi đánh giá năng lực chuyên biệt** (mã 401) và **thi đánh giá năng lực chuyên biệt kết hợp thi năng khiếu** (mã 401-NK, cho Mầm non, Thể chất, Quốc phòng - An ninh).\n- **Công thức mã 401:** điểm xét = (0,5 × điểm môn chính ĐGNL + 0,35 × điểm học bạ môn thứ hai + 0,15 × điểm học bạ môn thứ ba) × 3, thang 30. Điểm môn chính quy về thang 10. Điểm học bạ là trung bình 6 học kỳ THPT của môn đó.\n- **Điều kiện:** điểm môn chính từ 5,0 trở lên, và học lực lớp 12 loại Tốt kèm điều kiện về điểm (tổng 3 môn từ 18,00 hoặc điểm xét tốt nghiệp từ 8,5), hoặc đạt ngưỡng đầu vào của ngành.\n- **Kỳ thi được dùng:** ĐGNL chuyên biệt của ĐH Sư phạm TP.HCM năm 2025 hoặc 2026, và của ĐH Sư phạm Hà Nội, ĐH Sư phạm Hà Nội 2 năm 2026 (cho thí sinh tốt nghiệp THPT 2026).\n- Trường xét tuyển sau khi kết thúc cả 3 đợt thi (dự kiến), điểm có giá trị như nhau dù thi đợt nào.\n- Các trường khác cũng dùng kết quả. Danh sách năm 2025: ĐH Sư phạm Hà Nội 1 và 2, ĐH Sư phạm Đà Nẵng, ĐH Sư phạm Huế, ĐH Công Thương TP.HCM, ĐH Nguyễn Tất Thành." },
+    { id: "ketqua", label: "Khi nào có kết quả?",
+      keys: ["ket qua", "phuc khao", "phuc tra", "cong bo", "xem diem", "bao gio co diem", "cham lai"],
+      follow: ["xettuyen", "lich"],
+      text: "Mốc năm 2026:\n- **Công bố kết quả:** đợt 1 ngày 15/4, đợt 2 ngày 25/5, đợt 3 ngày 15/6.\n- **Đăng ký phúc khảo:** 15–18/4 (đợt 1), 25–28/5 (đợt 2), 15–18/6 (đợt 3).\n- **Kết quả phúc khảo:** trước 30/4 (đợt 1), trước 15/6 (đợt 2), trước 25/6 (đợt 3)." },
+    { id: "onthi", label: "Ôn thi thế nào?",
+      keys: ["on tap", "on thi", "luyen", "chuan bi", "hoc the nao", "tai lieu", "meo", "kinh nghiem", "may tinh", "cach on"],
+      follow: ["cautruc", "khoahoc"],
+      text: "Gợi ý chung, không phải thông báo chính thức:\n- Bám chương trình GDPT 2018 và dành nhiều thời gian cho lớp 12, vì phần này chiếm 70–80% đề.\n- Làm thử đề minh họa do trường công bố để quen dạng câu hỏi mới.\n- Tập làm bài trên máy tính, đúng thời lượng 90 phút.\n- Với Ngữ văn, luyện cả đọc hiểu trắc nghiệm, viết đoạn và viết bài luận." },
+    { id: "y2027", label: "Năm 2027 thì sao?",
+      keys: ["2027", "nam sau", "nam toi", "moi nhat", "nam nay", "khoa sau"],
+      follow: ["lich", "tongquan"],
+      text: "Mình chưa thấy ĐH Sư phạm TP.HCM công bố lịch thi, lệ phí hay phương thức cho năm 2027. Số liệu ở đây là của mùa 2026.\nLịch năm 2026 được đưa tin vào giữa tháng 12/2025, nên thông tin năm 2027 có thể ra vào thời điểm tương tự. Bạn nên theo dõi website tuyển sinh của trường." },
+    { id: "mang", label: "Cần mang gì khi đi thi?",
+      keys: ["mang gi", "mang theo", "can mang", "giay to", "cccd", "can cuoc", "the du thi"],
+      follow: ["dangky", "diadiem"],
+      text: "Mình chưa tìm thấy nguồn nào nêu giấy tờ cần mang khi đi thi. Tài khoản đăng ký gắn với số CCCD của bạn. Trường gửi thông báo thông tin dự thi cho từng thí sinh, bạn đọc kỹ thông báo đó. Trường cũng đăng danh mục máy tính bỏ túi được phép dùng trong kỳ thi.\nHotline của kỳ thi: 08 3835 2020." },
+    { id: "khoahoc", label: "Có khóa học ôn thi không?",
+      keys: ["khoa hoc", "lop hoc", "luyen thi", "trung tam", "hoc them", "day them", "dang ky hoc", "khoa on", "lop on", "hoc online", "hoc phi khoa"],
+      follow: ["onthi", "cautruc"],
+      text: "Về khóa học, bạn có thể liên hệ Zalo **0989651210** để được tư vấn nhé." },
+    { id: "tieuhoc", label: "Ngành Tiểu học thi môn gì?",
+      keys: ["tieu hoc", "giao duc tieu hoc", "nganh tieu hoc", "gdth", "su pham tieu hoc"],
+      follow: ["nguong", "xettuyen"],
+      text: "Ngành **Giáo dục Tiểu học** (mã 7140202):\n- Năm 2025: thí sinh đăng ký thi **Toán hoặc Ngữ văn** làm môn chính; hai môn còn lại dùng điểm trung bình 6 học kỳ THPT. Tổ hợp dự kiến A00, A01, D01.\n- Mùa 2026: ngưỡng đầu vào ở cơ sở chính là **19** (học bạ kết hợp ĐGNL chuyên biệt) và 21 (thi tốt nghiệp THPT). Điểm môn chính ĐGNL phải từ 5,0 trở lên.\n- Điểm trúng tuyển phương thức học bạ kết hợp ĐGNL chuyên biệt: 25,88 (2025) và 24,59 (2024).\nHỏi 'Tiểu học thi môn gì' hoặc 'chỉ tiêu Tiểu học' để xem tổ hợp và chỉ tiêu 2026." },
+    { id: "nguong", label: "Ngưỡng điểm đầu vào các ngành",
+      keys: ["nguong", "dam bao chat luong", "diem san", "toi thieu", "dau vao"],
+      follow: ["xettuyen", "diemchuan"],
+      text: "Ngưỡng đảm bảo chất lượng đầu vào mùa 2026 (trường công bố 11/7/2026), thang 30, cơ sở chính TP.HCM. Mỗi nhóm ghi **học bạ kết hợp ĐGNL chuyên biệt / thi tốt nghiệp THPT**:\n- **22 / 24:** Sư phạm Toán, Vật lý, Hóa học, Ngữ văn, Lịch sử, Địa lý.\n- **21 / 23:** Sư phạm Tiếng Anh, Tâm lý học.\n- **20 / 22:** Giáo dục Đặc biệt, Giáo dục Công dân, Giáo dục Chính trị, Sư phạm Sinh học, Sư phạm Tiếng Trung, Sư phạm Lịch sử - Địa lý, Văn học, Tâm lý học giáo dục, Toán ứng dụng.\n- **19 / 21:** Giáo dục Mầm non, Giáo dục Tiểu học, Sư phạm Khoa học tự nhiên, Ngôn ngữ Anh, Việt Nam học.\n- **18 / 20:** Giáo dục Quốc phòng - An ninh, Sư phạm Tin học, Tiếng Nga, Tiếng Pháp, Công nghệ, Quản lý giáo dục, Ngôn ngữ Trung Quốc, Địa lý học, Quốc tế học, Hóa học, Công tác xã hội, Du lịch.\n- **17 / 19:** Giáo dục Thể chất, Giáo dục học, Ngôn ngữ Nhật, Ngôn ngữ Hàn Quốc, Chính trị học, Hỗ trợ giáo dục người khuyết tật, Vật lý học.\n- **17 / 18:** Công nghệ giáo dục, Ngôn ngữ Pháp, Sinh học ứng dụng, Công nghệ thông tin.\n- **16 / 17:** Ngôn ngữ Nga.\nPhân hiệu Tây Ninh (trước là Long An) và Gia Lai có ngưỡng riêng, thường thấp hơn khoảng 1 điểm. Với phương thức thi tốt nghiệp THPT kết hợp năng khiếu (Mầm non, Thể chất, Quốc phòng - An ninh), thí sinh còn phải đạt tối thiểu 1/3 điểm ngưỡng ở môn Toán hoặc Văn theo tổ hợp xét tuyển." },
+    { id: "diemchuan", label: "Điểm trúng tuyển các năm trước",
+      keys: ["diem chuan", "diem trung tuyen", "trung tuyen", "bao nhieu diem", "diem nam ngoai", "nam 2025", "nam 2024", "lay bao nhieu"],
+      follow: ["nguong", "xettuyen"],
+      text: "Điểm trúng tuyển phương thức **học bạ kết hợp ĐGNL chuyên biệt** (mã 401), thang 30, theo bảng của trường (2025 / 2024; ngành có phân hiệu thì đây là số của cơ sở chính):\n- Giáo dục Tiểu học: 25,88 / 24,59\n- Sư phạm Toán học: 27,66 / 27,96\n- Sư phạm Ngữ văn: 27,77 / 25,6\n- Sư phạm Tiếng Anh: 26,72 / 26,12\n- Sư phạm Vật lý: 28,16 / 26,3\n- Sư phạm Hóa học: 28,14 / 28,25\n- Sư phạm Khoa học tự nhiên: 25,6 / 25,13\n- Ngôn ngữ Anh: 24,49 / 24,82\n- Công nghệ thông tin: 19,18 / 20,51\nBảng của trường còn nhiều ngành khác và một số dòng bị lệch cột, bạn nên đối chiếu bảng gốc. Điểm trúng tuyển mùa 2026 trường đã công bố ngày 11/8/2026 theo tổ hợp gốc, mình chưa đọc được tệp chi tiết." },
+    { id: "hoso", label: "Hồ sơ và thời gian xét tuyển",
+      keys: ["ho so", "nop ho so", "ho so nop", "nop khi nao", "nop ho so khi nao", "xet tuyen thang", "minh chung", "dot 2", "han nop", "dang ky xet tuyen", "tra cuu", "giay bao"],
+      follow: ["nguong", "xettuyen"],
+      text: "Mùa 2026 (theo website tuyển sinh của trường):\n- **Xét tuyển thẳng:** đăng ký và nộp minh chứng trực tuyến tại xettuyen.hcmue.edu.vn từ 1/6 đến 17h00 ngày 20/6/2026.\n- **Các phương thức còn lại:** đăng ký theo hướng dẫn và khung thời gian của Bộ GD&ĐT. Nộp minh chứng dự kiến từ 25/6 đến 15/7/2026.\n- **Kết quả xét tuyển** công bố ngày 11/8/2026; tra cứu và tải giấy báo nhập học tại xettuyen.hcmue.edu.vn/tra-cuu-ket-qua.\n- Trường có thông báo xét tuyển đợt 2 ngày 23/8/2026.\nTrang không nêu lệ phí xét tuyển." },
+    { id: "tuyenthang", label: "Tuyển thẳng và ưu tiên xét tuyển",
+      keys: ["tuyen thang", "uu tien", "hoc sinh gioi", "giai quoc gia", "lop chuyen", "giai nhat", "thanh tich", "dieu 8"],
+      follow: ["hoso", "xettuyen"],
+      text: "Trường áp dụng Điều 8 Quy chế tuyển sinh (Thông tư 06/2026/TT-BGDĐT ngày 15/02/2026):\n- **Tuyển thẳng:** Anh hùng lao động, Anh hùng lực lượng vũ trang, Chiến sĩ thi đua toàn quốc; giải nhất, nhì, ba kỳ thi học sinh giỏi quốc gia, quốc tế (trong 3 năm) phù hợp ngành; một số giải khoa học kỹ thuật, nghệ thuật, thể thao quốc gia và quốc tế theo thời hạn quy định.\n- **Ưu tiên xét tuyển:** giải khuyến khích học sinh giỏi quốc gia hoặc giải khoa học kỹ thuật cấp quốc gia (trong 3 năm), huy chương thể thao quốc gia, giải nghệ thuật toàn quốc (trong 4 năm), giải tay nghề ASEAN và quốc tế (trong 3 năm).\n- Ngành Giáo dục Mầm non và Giáo dục Quốc phòng - An ninh còn yêu cầu thi năng khiếu do trường tổ chức, mỗi môn từ 6,5 điểm trở lên.\n- Học sinh lớp chuyên tốt nghiệp THPT 2026 có phương thức ưu tiên xét tuyển riêng.\nĐiều kiện chi tiết từng trường hợp bạn xem bài tiêu chí tuyển thẳng và ưu tiên trên website tuyển sinh của trường." },
+    { id: "chuongtrinh", label: "Chương trình song ngữ và phân hiệu",
+      keys: ["song ngu", "lien ket", "phan hieu", "gia lai", "ma truong", "viet anh", "capital normal", "nganh moi", "chinh tri hoc", "ho tro giao duc"],
+      follow: ["nguong", "hoso"],
+      text: "- **Mã trường:** SPS (cơ sở chính TP.HCM), SPT (phân hiệu tại Tây Ninh, trước là Long An), SPG (phân hiệu tại Gia Lai).\n- **Song ngữ Việt - Anh:** thí sinh trúng tuyển Sư phạm Toán học hoặc Sư phạm Khoa học tự nhiên ở cơ sở chính có thể đăng ký học chương trình dạy bằng song ngữ. Chỉ tiêu dự kiến: 40 (Toán), 30 (Khoa học tự nhiên). Trường xét theo chứng chỉ ngoại ngữ hoặc bài thi đánh giá riêng, từ điểm cao xuống thấp.\n- **Ngôn ngữ Trung Quốc và Giáo dục Hán ngữ quốc tế:** chương trình liên kết với Capital Normal University (Trung Quốc), dành cho thí sinh trúng tuyển ngành Ngôn ngữ Trung Quốc.\n- **Ngành mới 2026:** Chính trị học (mã 7310201, chỉ tiêu 40) và Hỗ trợ giáo dục người khuyết tật (mã 7760103, chỉ tiêu 30), chỉ tuyển ở cơ sở chính, xét bằng thi tốt nghiệp THPT hoặc học bạ kết hợp ĐGNL chuyên biệt. Tổ hợp: Chính trị học xét X01, X70, X78, C14, C19, D66; Hỗ trợ giáo dục người khuyết tật xét C00, D01, C03, C19, X70 (thêm hậu tố VA ở phương thức học bạ kết hợp ĐGNL chuyên biệt)." },
+    { id: "luuy", label: "Lưu ý khi đăng ký nguyện vọng",
+      keys: ["luu y", "nguyen vong", "dong diem", "chung chi ngoai ngu", "ielts", "thieu hoc ky", "thieu mon", "kiem tra sau nhap hoc"],
+      follow: ["hoso", "xettuyen"],
+      text: "- Nếu nhiều thí sinh bằng điểm ở chỉ tiêu cuối, trường ưu tiên theo thứ tự nguyện vọng.\n- Ngành sư phạm chỉ xét nguyện vọng 1 đến 5 theo thứ tự trên hệ thống của Bộ GD&ĐT.\n- Điểm trúng tuyển có thể khác nhau giữa các tổ hợp trong cùng một ngành, và giữa phân hiệu với cơ sở chính.\n- Với phương thức thi tốt nghiệp THPT, chứng chỉ ngoại ngữ được quy đổi thay điểm môn ngoại ngữ trong tổ hợp theo bảng quy đổi của trường.\n- Nếu thiếu điểm một số học kỳ của môn trong tổ hợp, tối đa 2 học kỳ được thay bằng điểm một môn khác học ở lớp 10 hoặc 11 (môn đó không nằm sẵn trong tổ hợp). Trường chọn cách thay có lợi nhất.\n- Sau nhập học, trường kiểm tra thông tin và minh chứng; thí sinh chịu trách nhiệm nếu có sai lệch." },
+    { id: "quydoi", label: "Quy đổi điểm và độ lệch điểm",
+      keys: ["quy doi", "do lech", "phan vi", "bach phan vi", "ha noi 2", "tuong duong"],
+      follow: ["xettuyen", "nguong"],
+      text: "- Trường quy đổi tương đương điểm trúng tuyển và ngưỡng giữa các tổ hợp, phương thức bằng **bách phân vị**; các mốc do Hội đồng tuyển sinh quyết định theo dữ liệu xét tuyển của thí sinh.\n- **Độ lệch điểm** tổ hợp: nếu là 0,25 thì điểm trúng tuyển cao hơn tổ hợp gốc 0,25; nếu là -0,25 thì thấp hơn 0,25.\n- Điểm thi ĐGNL chuyên biệt của ĐH Sư phạm Hà Nội: độ lệch 0 ở mọi môn. ĐH Sư phạm Hà Nội 2: Vật lý -1,00; Sinh học -0,5; Tiếng Anh -1,25; Toán, Ngữ văn, Hóa học là 0.\nCông bố ngày 11/7/2026, căn cứ Công văn 4228/BGDĐT-GDĐH và Công văn 1652/ĐHSP-TTKT." },
+    { id: "tinhdiem", label: "Cách tính điểm bài thi / công cụ tính điểm",
+      keys: ["cach tinh diem", "tinh diem", "cach tinh", "cong cu tinh", "tinh diem xet tuyen", "tinh diem thi", "tinh the nao", "may tinh diem", "web tinh diem", "tool tinh"],
+      follow: ["xettuyen", "nguong"],
+      text: "- **Công thức mã 401:** điểm xét = (0,5 × điểm môn chính ĐGNL + 0,35 × điểm học bạ môn thứ hai + 0,15 × điểm học bạ môn thứ ba) × 3, thang 30. Điểm môn chính quy về thang 10. Điểm học bạ là trung bình 6 học kỳ THPT của môn đó.\n- **Điều kiện:** điểm môn chính từ 5,0 trở lên, và đạt ngưỡng đầu vào của ngành.\n- Bạn có thể tham khảo công cụ tính điểm này: [diemchuyenbiet.vercel.app](https://diemchuyenbiet.vercel.app/)" },
+    { id: "tudo", label: "Thí sinh tự do có được thi không?",
+      keys: ["thi sinh tu do", "tu do", "hoc sinh tu do", "tot nghiep nam truoc", "da tot nghiep", "thi lai", "gap year", "khong con la hoc sinh"],
+      follow: ["doituong", "xettuyen"],
+      text: "Như năm 2026, **thí sinh tự do được thi** kỳ thi đánh giá năng lực chuyên biệt. Tuy nhiên, **không được sử dụng kết quả này để xét tuyển vào HCMUE**.\nVề đề án 2027, các bạn cần chủ động cập nhật thông tin từ phía nhà trường." },
+    { id: "tailieu", label: "Tìm tài liệu ôn thi ở đâu?",
+      keys: ["tai lieu", "tim tai lieu", "o dau co tai lieu", "de thi thu", "de minh hoa", "de mau", "tai o dau", "nhom facebook", "group", "nhom tai lieu", "lay tai lieu"],
+      follow: ["onthi", "cautruc"],
+      text: "Bạn có thể vào nhóm [Facebook này](https://www.facebook.com/groups/25227192153643843/) để lấy tài liệu." },
+    { id: "cungtohop", label: "Thi THPT và ĐGNLCB có cần cùng tổ hợp không?",
+      keys: ["cung to hop", "khac to hop", "thi thpt voi", "thpt va dgnl", "thpt va dgnlcb", "to hop thpt", "dgnlcb", "co can cung", "phai cung to hop", "khong cung to hop"],
+      follow: ["tohop", "nguong"],
+      text: "**Không**, nhưng có điều kiện đi kèm. Bạn xem chi tiết tại [thông báo của nhà trường](https://tuyensinh.hcmue.edu.vn/index.php?option=com_content&view=article&id=27818%3Angng-m-bo-cht-lng-u-vao-iu-kin-nhn-h-s-ng-ky-xet-tuyen-cap-nhat&catid=4069%3Atin-tc&Itemid=9677&lang=vi&site=183)." },
+    { id: "lebao", label: "Anh Lê Bảo có uy tín không?",
+      keys: ["le bao", "anh le bao", "thay le bao", "uy tin", "co uy tin", "lua dao", "tin duoc khong", "ai tao bot", "ai lam bot"],
+      follow: ["khoahoc", "tailieu"],
+      text: "Anh Lê Bảo **hoàn toàn uy tín**. Zalo của anh ấy là **0989651210**, và bạn đang sử dụng công cụ do anh ấy tạo ra." },
+    { id: "cosokhac", label: "Thi ở điểm thi khác có xét vào cơ sở chính được không?",
+      keys: ["co so khac", "diem thi khac", "thi o co so khac", "thi o diem khac", "thi o da nang", "thi o tay ninh", "thi o dak lak", "thi o long an", "xet vao co so chinh", "thi o noi khac", "thi tinh khac", "khac diem thi"],
+      follow: ["diadiem", "lich"],
+      text: "**Được.** Giá trị điểm ở các điểm thi là như nhau, nên thi ở điểm thi nào cũng có thể dùng để xét vào cơ sở chính." },
+    { id: "tohop", label: "Tổ hợp và môn thi ĐGNL chuyên biệt",
+      keys: ["to hop", "hau to", "mon chinh", "mon thi", "a00", "a01", "d01", "c00", "x01", "chi tieu nganh"],
+      follow: ["xettuyen", "nguong"],
+      text: "Với phương thức học bạ kết hợp thi đánh giá năng lực chuyên biệt, tên tổ hợp có hậu tố hai chữ cái cho biết **môn thi đánh giá năng lực chuyên biệt** (môn chính): TO là Toán, VA là Ngữ văn, LI là Vật lí, HO là Hóa học, SI là Sinh học, TA là Tiếng Anh. Phần trong ngoặc ở bảng của trường cũng ghi môn này.\n- Ví dụ A00TO: tổ hợp Toán, Vật lí, Hóa học, thi ĐGNL môn Toán; hai môn còn lại lấy điểm trung bình học bạ.\nMình có bảng tổ hợp và chỉ tiêu 2026 của cơ sở chính (SPS). Bạn hỏi tên ngành, ví dụ Sư phạm Toán xét tổ hợp nào, hoặc hỏi một tổ hợp như D01 xét ngành nào. Bảng của phân hiệu Tây Ninh và Gia Lai mình chưa có." }
+  ];
+  var FALLBACK = {
+    text: "Mình chưa có thông tin về câu này trong dữ liệu đã tra. Bạn thử hỏi về lịch thi, lệ phí, cấu trúc đề, đăng ký, địa điểm hoặc xét tuyển, hoặc xem thông báo chính thức của trường.",
+    follow: ["lich", "phi", "cautruc"]
+  };
+  var ROUNDS = [
+    { n: 1, thi: "26–29/3", dk: "25/2–12/3", kq: "15/4", noi: "TP.HCM, Đà Nẵng, Đắk Lắk, Tây Ninh" },
+    { n: 2, thi: "7–10/5", dk: "6–13/4", kq: "25/5", noi: "TP.HCM, Đà Nẵng, Đắk Lắk, Tây Ninh" },
+    { n: 3, thi: "29–31/5", dk: "20–29/4", kq: "15/6", noi: "Chỉ TP.HCM và Tây Ninh" }
+  ];
+  var NOTE_2027 = "Lưu ý: do chưa có đề án năm 2027 nên bạn cần cập nhật thêm thông tin từ phía nhà trường.";
+  var CHIPS = ["lich", "phi", "cautruc", "dangky", "xettuyen", "tinhdiem", "tohop", "tudo", "khoahoc"];
+
+  // ---------- Tiện ích ----------
+  var log = document.getElementById("log");
+  var form = document.getElementById("form");
+  var input = document.getElementById("q");
+  var sendBtn = document.getElementById("send");
+
+  function byId(id) { for (var i = 0; i < KB.length; i++) if (KB[i].id === id) return KB[i]; return null; }
+  function norm(s) {
+    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+  }
+  function scrollDown() { log.scrollTop = log.scrollHeight; }
+
+  function inline(el, s) {
+    s.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https:\/\/[^)\s]+\))/g).forEach(function (p) {
+      if (!p) return;
+      var m;
+      if (/^\*\*[^*]+\*\*$/.test(p)) {
+        var b = document.createElement("strong");
+        b.textContent = p.slice(2, -2);
+        el.appendChild(b);
+      } else if ((m = p.match(/^\[([^\]]+)\]\((https:\/\/[^)\s]+)\)$/))) {
+        var a = document.createElement("a");
+        a.href = m[2];
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = m[1];
+        el.appendChild(a);
+      } else {
+        el.appendChild(document.createTextNode(p));
+      }
+    });
+  }
+  function renderRich(el, text) {
+    el.textContent = "";
+    var ul = null;
+    String(text).split("\n").forEach(function (line) {
+      line = line.trim();
+      if (!line) { ul = null; return; }
+      var m = line.match(/^[-•]\s+(.*)$/) || line.match(/^\*\s+(.*)$/);
+      if (m) {
+        if (!ul) { ul = document.createElement("ul"); el.appendChild(ul); }
+        var li = document.createElement("li");
+        inline(li, m[1]);
+        ul.appendChild(li);
+      } else {
+        ul = null;
+        var p = document.createElement("p");
+        inline(p, line);
+        el.appendChild(p);
+      }
+    });
+  }
+
+  function addRow(role) {
+    var row = document.createElement("div");
+    row.className = "row " + role;
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    row.appendChild(bubble);
+    log.appendChild(row);
+    return { row: row, bubble: bubble };
+  }
+  function addChips(row, ids) {
+    var wrap = document.createElement("div");
+    wrap.className = "chips";
+    ids.forEach(function (id) {
+      var e = byId(id);
+      if (!e) return;
+      var c = document.createElement("button");
+      c.type = "button";
+      c.className = "chip";
+      c.textContent = e.label;
+      c.addEventListener("click", function () { ask(e.label, e.id); });
+      wrap.appendChild(c);
+    });
+    row.appendChild(wrap);
+  }
+
+  // ---------- Trả lời từ bộ dữ liệu ----------
+  function localAnswer(q) {
+    var ng = nganhAnswer(q);
+    if (ng) return ng;
+    var n = " " + norm(q) + " ";
+    var best = null, bestScore = 0;
+    KB.forEach(function (e) {
+      var score = 0;
+      e.keys.forEach(function (k) { if (n.indexOf(k) !== -1) score += k.length; });
+      if (score > bestScore) { bestScore = score; best = e; }
+    });
+    return best ? best : FALLBACK;
+  }
+
+  // ---------- Bảng chỉ tiêu và tổ hợp xét tuyển 2026, cơ sở chính TP.HCM (SPS), theo tệp của trường ----------
+  var TH_NAME = {
+    A00: "Toán, Vật lí, Hóa học", A01: "Toán, Vật lí, Tiếng Anh", A02: "Toán, Vật lí, Sinh học",
+    B00: "Toán, Hóa học, Sinh học", B08: "Toán, Sinh học, Tiếng Anh",
+    C00: "Ngữ văn, Lịch sử, Địa lí", C03: "Ngữ văn, Toán, Lịch sử", C04: "Ngữ văn, Toán, Địa lí",
+    C14: "Ngữ văn, Toán, GDCD", C19: "Ngữ văn, Lịch sử, GDCD", C20: "Ngữ văn, Địa lí, GDCD",
+    D01: "Ngữ văn, Toán, Tiếng Anh", D02: "Ngữ văn, Toán, Tiếng Nga", D03: "Ngữ văn, Toán, Tiếng Pháp",
+    D04: "Ngữ văn, Toán, Tiếng Trung", D06: "Ngữ văn, Toán, Tiếng Nhật", D07: "Toán, Hóa học, Tiếng Anh",
+    D08: "Toán, Sinh học, Tiếng Anh", D09: "Toán, Lịch sử, Tiếng Anh", D14: "Ngữ văn, Lịch sử, Tiếng Anh",
+    D15: "Ngữ văn, Địa lí, Tiếng Anh", D66: "Ngữ văn, GDCD, Tiếng Anh", DD2: "Ngữ văn, Toán, Tiếng Hàn",
+    X01: "Toán, Ngữ văn, GDKTPL", X06: "Toán, Vật lí, Tin học", X07: "Toán, Vật lí, Công nghệ công nghiệp",
+    X08: "Toán, Vật lí, Công nghệ nông nghiệp", X10: "Toán, Hóa học, Tin học", X14: "Toán, Sinh học, Tin học",
+    X16: "Toán, Sinh học, Công nghệ nông nghiệp", X26: "Toán, Tin học, Tiếng Anh", X70: "Ngữ văn, Lịch sử, GDKTPL",
+    X74: "Ngữ văn, Địa lí, GDKTPL", X78: "Ngữ văn, GDKTPL, Tiếng Anh", X79: "Ngữ văn, Tiếng Anh, Tin học"
+  };
+  var MON = { TO: "Toán", VA: "Ngữ văn", LI: "Vật lí", HO: "Hóa học", SI: "Sinh học", TA: "Tiếng Anh" };
+  var GD6 = "X01VA X70VA X78VA C14VA C19VA D66VA", GD6T = "X01 X70 X78 C14 C19 D66";
+  var NN = "C00VA C03VA D01VA X70VA C19VA", NNT = "C00 C03 D01 X70 C19";
+  // [tên ngành, mã ngành, chỉ tiêu, tổ hợp học bạ + ĐGNLCB, tổ hợp thi tốt nghiệp THPT, tên gọi khác (không dấu, ngăn bằng |), nội dung riêng]
+  var NG = [
+    ["Giáo dục học", "7140101", 80, "A00TO C03VA C03TO D01TO X01TO", "A00 C03 D01 X01", "", ""],
+    ["Công nghệ giáo dục", "7140103", 50, "A01TO B08TO D07TO X26TO", "A01 B08 D07 X26", "", ""],
+    ["Quản lý giáo dục", "7140114", 80, "A00TO C03VA C03TO D01TO X01TO", "A00 C03 D01 X01", "", ""],
+    ["Giáo dục Mầm non", "7140201", 440, "M02TO M03VA", "M02 M03", "mam non", "- **Thi ĐGNL chuyên biệt + năng khiếu:** M02TO (Toán, NK GDMN 1, NK GDMN 2; thi ĐGNL môn Toán), M03VA (Ngữ văn, NK GDMN 1, NK GDMN 2; thi ĐGNL môn Ngữ văn)\n- **Thi tốt nghiệp THPT + năng khiếu:** M02 (Toán, NK GDMN 1, NK GDMN 2), M03 (Ngữ văn, NK GDMN 1, NK GDMN 2)"],
+    ["Giáo dục Tiểu học", "7140202", 265, "A00TO A01TO D01TO D01VA", "A00 A01 D01", "tieu hoc", ""],
+    ["Giáo dục Tiểu học (song ngữ Việt - Anh)", "7140202SN", 35, "A00TO A01TO D01TO D01VA", "A00 A01 D01", "tieu hoc song ngu|giao duc tieu hoc song ngu", ""],
+    ["Giáo dục Đặc biệt", "7140203", 50, NN, NNT, "", ""],
+    ["Giáo dục Công dân", "7140204", 40, GD6, GD6T, "", ""],
+    ["Giáo dục Chính trị", "7140205", 20, GD6, GD6T, "", ""],
+    ["Giáo dục Thể chất", "7140206", 80, "M08VA T01TO", "M08 T01", "the chat|the duc", "- **Thi ĐGNL chuyên biệt + năng khiếu:** M08VA (Ngữ văn, NK TDTT 1, NK TDTT 2; thi ĐGNL môn Ngữ văn), T01TO (Toán, NK TDTT 1, NK TDTT 2; thi ĐGNL môn Toán)\n- **Thi tốt nghiệp THPT + năng khiếu:** M08 (Ngữ văn, NK TDTT 1, NK TDTT 2), T01 (Toán, NK TDTT 1, NK TDTT 2)"],
+    ["Giáo dục Quốc phòng - An ninh", "7140208", 40, "Q01TO Q02VA", "Q01 Q02", "quoc phong|gdqp", "- **Thi ĐGNL chuyên biệt + năng khiếu:** Q01TO (Toán, NK TDTT 1, NK GDQP-AN; thi ĐGNL môn Toán), Q02VA (Ngữ văn, NK TDTT 1, NK GDQP-AN; thi ĐGNL môn Ngữ văn)\n- **Thi tốt nghiệp THPT + năng khiếu:** Q01 (Toán, NK TDTT 1, NK GDQP-AN), Q02 (Ngữ văn, NK TDTT 1, NK GDQP-AN)"],
+    ["Sư phạm Toán học", "7140209", 140, "A00TO A01TO X06TO", "A00 A01 X06", "", ""],
+    ["Sư phạm Tin học", "7140210", 100, "A01TO B08TO D07TO X26TO", "A01 B08 D07 X26", "", ""],
+    ["Sư phạm Vật lý", "7140211", 32, "A00LI A01LI", "A00 A01", "", ""],
+    ["Sư phạm Hóa học", "7140212", 40, "A00HO B00HO D07HO", "A00 B00 D07", "", ""],
+    ["Sư phạm Sinh học", "7140213", 45, "B00SI D08SI", "B00 D08", "", ""],
+    ["Sư phạm Ngữ văn", "7140217", 90, "C00VA D01VA D14VA", "C00 D01 D14", "", ""],
+    ["Sư phạm Lịch sử", "7140218", 45, "C00VA X70VA C19VA", "C00 X70 C19", "", ""],
+    ["Sư phạm Địa lý", "7140219", 50, "C00VA C04VA D15VA X74VA C20VA", "C00 C04 D15 X74 C20", "", ""],
+    ["Sư phạm Tiếng Anh", "7140231", 165, "D01TA X79TA", "D01 X79", "", ""],
+    ["Sư phạm Tiếng Nga", "7140232", 20, "D01TA D14TA X78TA D66TA", "D01 D02 D14 X78 D66", "", ""],
+    ["Sư phạm Tiếng Pháp", "7140233", 20, "D01TA", "D01 D03", "", ""],
+    ["Sư phạm Tiếng Trung Quốc", "7140234", 20, "D01TA", "D01 D04", "su pham tieng trung", ""],
+    ["Sư phạm Công nghệ", "7140246", 50, "A01LI A01TO A02LI A02SI A02TO", "A01 A02", "", ""],
+    ["Sư phạm Khoa học tự nhiên", "7140247", 100, "A00HO A00LI A00TO A02LI A02SI A02TO B00HO B00SI B00TO", "A00 A02 B00", "su pham khtn", ""],
+    ["Sư phạm Lịch sử - Địa lý", "7140249", 100, "C00VA X70VA X74VA C19VA C20VA", "C00 X70 X74 C19 C20", "", ""],
+    ["Tiếng Việt và văn hóa Việt Nam", "7210101", 10, "", "", "tieng viet va van hoa", "Ngành này chỉ xét theo phương thức **ưu tiên xét tuyển** (theo bảng của trường)."],
+    ["Ngôn ngữ Anh", "7220201", 220, "D01TA X79TA", "D01 X79", "", ""],
+    ["Ngôn ngữ Nga", "7220202", 100, "D01TA D14TA X78TA D66TA", "D01 D02 D14 X78 D66", "", ""],
+    ["Ngôn ngữ Pháp", "7220203", 100, "D01TA", "D01 D03", "", ""],
+    ["Ngôn ngữ Trung Quốc", "7220204", 220, "D01TA", "D01 D04", "", ""],
+    ["Ngôn ngữ Nhật", "7220209", 160, "D01TA", "D01 D06", "", ""],
+    ["Ngôn ngữ Hàn Quốc", "7220210", 100, "D01TA D14TA", "D01 DD2 D14", "", ""],
+    ["Văn học", "7229030", 130, "C00VA D01VA D14VA", "C00 D01 D14", "", ""],
+    ["Chính trị học", "7310201", 40, GD6, GD6T, "", ""],
+    ["Tâm lý học", "7310401", 124, "C00VA C03VA C04VA D01VA D01TO D01TA", "C00 C03 C04 D01", "", ""],
+    ["Tâm lý học giáo dục", "7310403", 104, "C00VA C03VA C04VA D01VA D01TO D01TA", "C00 C03 C04 D01", "", ""],
+    ["Địa lý học", "7310501", 50, "C00VA C04VA D15VA X74VA C20VA", "C00 C04 D15 X74 C20", "", ""],
+    ["Quốc tế học", "7310601", 100, "D09TA D14TA", "D09 D14", "", ""],
+    ["Việt Nam học", "7310630", 100, "C00VA D01VA D14VA", "C00 D01 D14", "", ""],
+    ["Sinh học ứng dụng", "7420203", 50, "B00SI D08SI X14SI X16SI A02SI", "B00 D08 X14 X16 A02", "", ""],
+    ["Vật lý học", "7440102", 110, "A00LI A01LI X07LI X08LI", "A00 A01 X07 X08", "", ""],
+    ["Hóa học", "7440112", 110, "A00HO B00HO D07HO X10HO", "A00 B00 D07 X10", "", ""],
+    ["Toán ứng dụng", "7460112", 100, "A00TO A01TO X06TO", "A00 A01 X06", "", ""],
+    ["Công nghệ thông tin", "7480201", 160, "A01TO B08TO D07TO X26TO", "A01 B08 D07 X26", "", ""],
+    ["Công tác xã hội", "7760101", 109, "C00VA D14VA X70VA C19VA", "C00 D14 X70 C19", "", ""],
+    ["Hỗ trợ giáo dục người khuyết tật", "7760103", 30, NN, NNT, "ho tro giao duc", ""],
+    ["Du lịch", "7810101", 100, "C00VA D01VA D14VA D15VA", "C00 D01 D14 D15", "", ""]
+  ];
+  function fmtHB(code) {
+    var base = code.slice(0, 3), suf = code.slice(3);
+    return code + " (" + (TH_NAME[base] || "") + "; thi ĐGNL môn " + (MON[suf] || suf) + ")";
+  }
+  function fmtTN(code) { return code + " (" + (TH_NAME[code] || "") + ")"; }
+  function ngKeys(r) {
+    var name = norm(r[0].replace(/\(.*\)/, "")).trim();
+    var keys = [name];
+    if (/^su pham .* hoc$/.test(name)) keys.push(name.replace(/ hoc$/, ""));
+    if (r[5]) r[5].split("|").forEach(function (k) { keys.push(k); });
+    return keys;
+  }
+  // Trả lời theo từng ngành hoặc từng tổ hợp. Trả về null nếu câu hỏi không hỏi về tổ hợp/chỉ tiêu.
+  function nganhAnswer(q) {
+    var n = " " + norm(q).replace(/\bsp\b/g, "su pham").replace(/\bcntt\b/g, "cong nghe thong tin").replace(/\bkhtn\b/g, "khoa hoc tu nhien") + " ";
+    var codes = (n.match(/\b(?:dd2|[abcdmqtx]\d{2})\b/g) || []).map(function (c) { return c.toUpperCase(); });
+    var trigger = codes.length > 0 || /to hop|khoi |mon thi|thi mon|mon gi|chi tieu|xet mon|xet nhung|can thi|thi gi|thi nhung/.test(n);
+    if (!trigger) return null;
+    var best = null, bestLen = 0;
+    NG.forEach(function (r) {
+      ngKeys(r).forEach(function (k) {
+        if (k && n.indexOf(" " + k + " ") !== -1 && k.length > bestLen) { best = r; bestLen = k.length; }
+      });
+    });
+    var FOLLOW = ["nguong", "diemchuan", "tohop"];
+    if (!best) {
+      if (!codes.length) return null;
+      var lines = codes.map(function (c) {
+        var names = NG.filter(function (r) {
+          return r[4].split(" ").indexOf(c) !== -1 || r[3].split(" ").some(function (x) { return x.slice(0, 3) === c; });
+        }).map(function (r) { return r[0].replace(/ \(.*\)/, ""); });
+        if (!names.length) return "- **" + c + ":** không có trong bảng tổ hợp cơ sở chính của trường.";
+        return "- **" + c + (TH_NAME[c] ? " (" + TH_NAME[c] + ")" : "") + ":** " + names.join(", ") + ".";
+      });
+      return { id: "nganh", label: "Tổ hợp " + codes.join(", "), follow: FOLLOW,
+        text: "Các ngành xét tổ hợp này ở cơ sở chính theo bảng của trường (cả thi tốt nghiệp THPT và học bạ kết hợp ĐGNL chuyên biệt):\n" + lines.join("\n") + "\nBạn hỏi tên một ngành để xem đầy đủ tổ hợp của ngành đó." };
+    }
+    var out = [];
+    out.push("**" + best[0] + "** (mã " + best[1] + ", chỉ tiêu " + best[2] + ", cơ sở chính SPS):");
+    codes.forEach(function (c) {
+      var has = best[4].split(" ").indexOf(c) !== -1 || best[3].split(" ").some(function (x) { return x.slice(0, 3) === c; });
+      out.push(has ? "- Có, ngành này **có xét** tổ hợp " + c + "." : "- Không, ngành này **không xét** tổ hợp " + c + " theo bảng của trường.");
+    });
+    if (best[6] && !best[3]) {
+      out.push(best[6]);
+    } else if (best[6]) {
+      out.push(best[6]);
+    } else {
+      out.push("- **Thi tốt nghiệp THPT:** " + best[4].split(" ").map(fmtTN).join("; "));
+      out.push("- **Học bạ THPT kết hợp ĐGNL chuyên biệt:** " + best[3].split(" ").map(fmtHB).join("; "));
+    }
+    out.push("Hậu tố hai chữ cái của tổ hợp học bạ là môn thi ĐGNL chuyên biệt (môn chính); hai môn còn lại lấy điểm học bạ. Phân hiệu Tây Ninh và Gia Lai có bảng riêng, mình chưa có.");
+    return { id: "nganh", label: "Tổ hợp xét tuyển ngành " + best[0].replace(/ \(.*\)/, ""), follow: FOLLOW, text: out.join("\n") };
+  }
+
+  // ---------- Luồng hỏi đáp: so khớp với bộ câu hỏi, rồi hỏi bạn thấy phù hợp chưa ----------
+  var LINKS = [
+    { t: "Trang thông tin tuyển sinh của trường", u: "https://tuyensinh.hcmue.edu.vn/?site=183" },
+    { t: "Trang kỳ thi đánh giá năng lực chuyên biệt", u: "https://dgnl.hcmue.edu.vn" }
+  ];
+  function addLinks(bubble) {
+    var wrap = document.createElement("div");
+    wrap.className = "links";
+    LINKS.forEach(function (l) {
+      var a = document.createElement("a");
+      a.href = l.u;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = l.t;
+      wrap.appendChild(a);
+    });
+    bubble.appendChild(wrap);
+  }
+  function lockFeedback() {
+    Array.prototype.forEach.call(log.querySelectorAll(".fb button"), function (x) { x.disabled = true; });
+  }
+  function feedbackReply(ok, local) {
+    lockFeedback();
+    var u = addRow("user");
+    u.bubble.textContent = ok ? "Phù hợp rồi" : "Chưa phù hợp";
+    var b = addRow("bot");
+    if (ok) {
+      renderRich(b.bubble, "Mình rất vui vì giúp được bạn. Bạn muốn hỏi thêm gì nữa không?");
+      if (local.follow) addChips(b.row, local.follow);
+    } else {
+      renderRich(b.bubble, "Mình xin lỗi vì chưa giải đáp đúng ý bạn. Bạn có thể tìm hiểu kỹ hơn ở đây:");
+      addLinks(b.bubble);
+    }
+    scrollDown();
+  }
+  function showFeedback(row, local) {
+    var fb = document.createElement("div");
+    fb.className = "fb";
+    var q = document.createElement("span");
+    q.className = "fbq";
+    q.textContent = "Bạn thấy câu trả lời này phù hợp chưa?";
+    fb.appendChild(q);
+    [["Phù hợp rồi", true], ["Chưa phù hợp", false]].forEach(function (o) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.textContent = o[0];
+      btn.addEventListener("click", function () { feedbackReply(o[1], local); });
+      fb.appendChild(btn);
+    });
+    row.appendChild(fb);
+  }
+
+  function ask(q, forcedId) {
+    q = String(q || "").trim();
+    if (!q) return;
+    lockFeedback();
+
+    var u = addRow("user");
+    u.bubble.textContent = q;
+
+    var local = (forcedId && byId(forcedId)) || localAnswer(q);
+    var b = addRow("bot");
+
+    if (local.id) {
+      renderRich(b.bubble, "Mình thấy câu hỏi của bạn gần với mục **" + local.label + "**:\n" + local.text);
+      if (["khoahoc", "y2027", "tudo", "tailieu", "lebao"].indexOf(local.id) < 0) {
+        var note = document.createElement("p");
+        note.className = "note";
+        note.textContent = NOTE_2027;
+        b.bubble.appendChild(note);
+      }
+      showFeedback(b.row, local);
+    } else {
+      renderRich(b.bubble, local.text + "\nBạn có thể tìm hiểu ở các trang sau:");
+      addLinks(b.bubble);
+    }
+    scrollDown();
+    input.focus();
+  }
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = input.value;
+    input.value = "";
+    ask(v);
+  });
+
+  // ---------- Lời chào + phiếu 3 đợt ----------
+  (function greet() {
+    var g = addRow("bot");
+    var p = document.createElement("p");
+    p.textContent = "Chào bạn, mình là trợ lý tư vấn về kỳ thi đánh giá năng lực chuyên biệt của ĐH Sư phạm TP.HCM. Mình trả lời dựa trên thông tin đã tra từ báo chí, không phải kênh chính thức của trường. Đây là 3 đợt thi của mùa 2026:";
+    g.bubble.appendChild(p);
+
+    var wrap = document.createElement("div");
+    wrap.className = "tickets";
+    ROUNDS.forEach(function (r) {
+      var t = document.createElement("div");
+      t.className = "ticket";
+      var stub = document.createElement("div");
+      stub.className = "stub";
+      stub.innerHTML = "<small>Đợt</small><b></b>";
+      stub.querySelector("b").textContent = r.n;
+      var body = document.createElement("div");
+      body.className = "body";
+      var dl = document.createElement("dl");
+      [["Thi", r.thi], ["Đăng ký", r.dk], ["Kết quả", r.kq]].forEach(function (pair) {
+        var dt = document.createElement("dt"); dt.textContent = pair[0];
+        var dd = document.createElement("dd"); dd.textContent = pair[1];
+        dl.appendChild(dt); dl.appendChild(dd);
+      });
+      var w = document.createElement("p");
+      w.className = "where";
+      w.textContent = r.noi;
+      body.appendChild(dl);
+      body.appendChild(w);
+      t.appendChild(stub);
+      t.appendChild(body);
+      wrap.appendChild(t);
+    });
+    g.bubble.appendChild(wrap);
+
+    var hint = document.createElement("p");
+    hint.style.marginTop = "10px";
+    hint.textContent = "Bạn muốn hỏi gì?";
+    g.bubble.appendChild(hint);
+    addChips(g.row, CHIPS);
+  })();
+})();
+</script>
